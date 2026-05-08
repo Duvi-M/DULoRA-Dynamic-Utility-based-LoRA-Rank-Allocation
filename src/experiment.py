@@ -14,6 +14,7 @@ from src.rank_allocator import (
 )
 from src.utils import (
     get_device,
+    set_seed,
     count_trainable_params,
     count_total_params,
 )
@@ -54,6 +55,8 @@ def train_and_evaluate(model, train_dataset, test_dataset, config, output_dir):
         logging_steps=training_cfg["logging_steps"],
         save_strategy="no",
         report_to="none",
+        seed=config["seed"],
+        data_seed=config["seed"],
     )
 
     trainer = Trainer(
@@ -81,6 +84,7 @@ def run_experiment(config: dict):
     train_dataset, test_dataset, tokenizer = prepare_dataset(config)
 
     # 1. Baseline LoRA
+    set_seed(config["seed"])
     baseline_model = build_lora_model(
         config=config,
         r=config["baseline_lora"]["r"],
@@ -106,6 +110,7 @@ def run_experiment(config: dict):
     # 2. Scoring model para calcular gradientes
     adaptive_cfg = config["adaptive_lora"]
 
+    set_seed(config["seed"])
     scoring_model = build_lora_model(
         config=config,
         r=adaptive_cfg["min_rank"],
@@ -139,6 +144,7 @@ def run_experiment(config: dict):
     save_allocation_history_plot(history, output_dir)
 
     # 3. Adaptive Gradient-Aware LoRA
+    set_seed(config["seed"])
     adaptive_model = build_lora_model(
         config=config,
         rank_pattern=rank_pattern,
