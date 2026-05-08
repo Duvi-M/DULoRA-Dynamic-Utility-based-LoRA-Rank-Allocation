@@ -1,5 +1,5 @@
 seed: 42
-experiment_name: run_001
+experiment_name: colab_budget_96_seedfix
 output_dir: outputs
 
 dataset:
