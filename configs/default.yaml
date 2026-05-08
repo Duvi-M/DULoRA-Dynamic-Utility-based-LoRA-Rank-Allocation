@@ -1,5 +1,6 @@
 seed: 42
-output_dir: outputs/run_001
+experiment_name: run_001
+output_dir: outputs
 
 dataset:
   name: imdb

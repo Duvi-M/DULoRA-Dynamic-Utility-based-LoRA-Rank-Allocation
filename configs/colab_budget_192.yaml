@@ -1,5 +1,6 @@
 seed: 42
-output_dir: outputs/colab_budget_192
+experiment_name: colab_budget_192
+output_dir: outputs
 
 dataset:
   name: imdb

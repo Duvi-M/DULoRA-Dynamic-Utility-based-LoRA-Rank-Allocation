@@ -1,3 +1,5 @@
+from datetime import datetime
+from pathlib import Path
 import time
 from torch.utils.data import DataLoader
 from transformers import TrainingArguments, Trainer
@@ -21,6 +23,22 @@ from src.plots import (
     save_allocation_history_plot,
     save_metrics,
 )
+
+
+def resolve_run_output_dir(config: dict) -> str:
+    base_output_dir = Path(config["output_dir"])
+    experiment_name = config.get("experiment_name")
+
+    if experiment_name:
+        run_name = experiment_name
+    else:
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        run_name = f"run_{timestamp}"
+
+    run_output_dir = base_output_dir / run_name
+    run_output_dir.mkdir(parents=True, exist_ok=True)
+
+    return str(run_output_dir)
 
 
 def train_and_evaluate(model, train_dataset, test_dataset, config, output_dir):
@@ -56,7 +74,8 @@ def train_and_evaluate(model, train_dataset, test_dataset, config, output_dir):
 
 
 def run_experiment(config: dict):
-    output_dir = config["output_dir"]
+    output_dir = resolve_run_output_dir(config)
+    config["output_dir"] = output_dir
     device = get_device()
 
     train_dataset, test_dataset, tokenizer = prepare_dataset(config)
