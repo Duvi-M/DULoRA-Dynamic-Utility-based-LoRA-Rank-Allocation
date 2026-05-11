@@ -2,10 +2,26 @@ from datasets import load_dataset
 from transformers import AutoTokenizer
 
 
+TEXT_TASKS = {"sentiment", "topic"}
+
+
 def prepare_dataset(config: dict):
+    task_type = config.get("task_type", "sentiment")
+
+    if task_type not in TEXT_TASKS:
+        raise ValueError(
+            f"Unsupported task_type '{task_type}'. "
+            f"Supported text tasks are: {sorted(TEXT_TASKS)}."
+        )
+
+    return prepare_text_dataset(config)
+
+
+def prepare_text_dataset(config: dict):
     dataset_cfg = config["dataset"]
     model_name = config["model"]["name"]
     seed = config["seed"]
+    text_column = dataset_cfg.get("text_column", "text")
 
     dataset = load_dataset(dataset_cfg["name"])
 
@@ -20,7 +36,7 @@ def prepare_dataset(config: dict):
 
     def tokenize(example):
         return tokenizer(
-            example["text"],
+            example[text_column],
             truncation=True,
             padding="max_length",
             max_length=dataset_cfg["max_length"],

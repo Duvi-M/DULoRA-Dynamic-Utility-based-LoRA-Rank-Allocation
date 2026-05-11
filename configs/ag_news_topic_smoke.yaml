@@ -1,0 +1,39 @@
+task_type: topic
+seed: 42
+experiment_name: ag_news_topic_smoke
+output_dir: outputs
+
+dataset:
+  name: ag_news
+  text_column: text
+  train_size: 64
+  test_size: 32
+  max_length: 128
+
+model:
+  name: bert-base-uncased
+  num_labels: 4
+
+training:
+  epochs: 1
+  batch_size: 8
+  learning_rate: 0.00005
+  logging_steps: 10
+
+lora:
+  alpha: 16
+  dropout: 0.1
+  target_modules:
+    - query
+    - value
+
+baseline_lora:
+  r: 8
+
+adaptive_lora:
+  algorithm: gradient_aware
+  min_rank: 2
+  max_rank: 8
+  rank_step: 2
+  total_budget: 96
+  warmup_steps: 5
