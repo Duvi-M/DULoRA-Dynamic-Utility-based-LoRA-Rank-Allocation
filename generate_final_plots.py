@@ -282,9 +282,9 @@ def plot_accuracy_vs_budget(results: list):
         marker="s",
         label="Fixed LoRA baseline",
     )
-    plt.xlabel("Rank budget")
+    plt.xlabel("Total rank budget")
     plt.ylabel("Accuracy")
-    plt.title("Accuracy vs rank budget")
+    plt.title("Accuracy comparison under different rank budgets")
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.tight_layout()
@@ -327,7 +327,7 @@ def plot_accuracy_vs_trainable_params(results: list):
     )
     plt.xlabel("Trainable parameters")
     plt.ylabel("Accuracy")
-    plt.title("Accuracy vs trainable parameters")
+    plt.title("Accuracy depending on trainable parameters")
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.tight_layout()
@@ -336,25 +336,31 @@ def plot_accuracy_vs_trainable_params(results: list):
 
 
 def plot_rank_distribution_by_budget(results: list):
-    """Show how many LoRA modules receive each rank for every budget."""
+    """Show stacked counts of assigned ranks for each budget."""
     budgets = [result["budget"] for result in results]
     x_positions = list(range(len(budgets)))
-    bar_width = 0.18
+    rank_counts_by_result = [
+        count_ranks(result["rank_pattern"])
+        for result in results
+    ]
+    present_ranks = [
+        rank
+        for rank in RANK_VALUES
+        if any(counts.get(rank, 0) > 0 for counts in rank_counts_by_result)
+    ]
 
     plt.figure(figsize=(9, 5))
-    for offset_idx, rank in enumerate(RANK_VALUES):
-        counts = [
-            count_ranks(result["rank_pattern"]).get(rank, 0)
-            for result in results
+    bottoms = [0 for _ in results]
+    for rank in present_ranks:
+        counts = [rank_counts.get(rank, 0) for rank_counts in rank_counts_by_result]
+        plt.bar(x_positions, counts, bottom=bottoms, label=f"Rank {rank}")
+        bottoms = [
+            bottom + count
+            for bottom, count in zip(bottoms, counts)
         ]
-        positions = [
-            x + (offset_idx - 1.5) * bar_width
-            for x in x_positions
-        ]
-        plt.bar(positions, counts, width=bar_width, label=f"Rank {rank}")
 
     plt.xticks(x_positions, budgets)
-    plt.xlabel("Rank budget")
+    plt.xlabel("Total rank budget")
     plt.ylabel("Number of LoRA modules")
     plt.title("Adaptive rank distribution by budget")
     plt.grid(axis="y", alpha=0.3)
@@ -364,7 +370,14 @@ def plot_rank_distribution_by_budget(results: list):
     plt.close()
 
 
-def plot_heatmap(matrix, title: str, output_name: str, colorbar_label: str):
+def plot_heatmap(
+    matrix,
+    title: str,
+    output_name: str,
+    colorbar_label: str,
+    annotate: bool = False,
+    value_format: str = "{:.2f}",
+):
     plt.figure(figsize=(5, 7))
     image = plt.imshow(matrix, aspect="auto", cmap="viridis")
     plt.colorbar(image, label=colorbar_label)
@@ -376,6 +389,20 @@ def plot_heatmap(matrix, title: str, output_name: str, colorbar_label: str):
     plt.xlabel("Attention module")
     plt.ylabel("Transformer layer")
     plt.title(title)
+
+    if annotate:
+        for row_idx, row in enumerate(matrix):
+            for col_idx, value in enumerate(row):
+                plt.text(
+                    col_idx,
+                    row_idx,
+                    value_format.format(value),
+                    ha="center",
+                    va="center",
+                    color="white",
+                    fontsize=8,
+                )
+
     plt.tight_layout()
     plt.savefig(FINAL_PLOTS_DIR / output_name, dpi=300)
     plt.close()
@@ -390,11 +417,19 @@ def plot_rank_heatmaps(results_by_budget: dict):
             continue
 
         matrix = build_layer_matrix(result["rank_pattern"], default_value=0)
+        flat_values = [value for row in matrix for value in row]
+        all_values_equal = len(set(flat_values)) == 1
+        title = f"Adaptive rank heatmap, budget {budget}"
+        if budget == 192 and all_values_equal:
+            title += " (equivalent to fixed LoRA r=8)"
+
         plot_heatmap(
             matrix=matrix,
-            title=f"Adaptive rank heatmap, budget {budget}",
+            title=title,
             output_name=f"rank_heatmap_budget_{budget}.png",
             colorbar_label="Assigned rank",
+            annotate=True,
+            value_format="{:.0f}",
         )
 
 
