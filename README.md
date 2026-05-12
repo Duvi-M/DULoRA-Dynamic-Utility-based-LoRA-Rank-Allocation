@@ -531,6 +531,23 @@ The generated metrics and plots will be saved under:
 outputs/<experiment_name>/
 ```
 
+### Fair budget comparison experiments
+
+These configurations compare Adaptive LoRA against fixed-rank LoRA under
+approximately equivalent rank budgets:
+
+- Fixed LoRA `r=4` vs Adaptive LoRA budget `96`.
+- Fixed LoRA `r=6` vs Adaptive LoRA budget `144`.
+- Fixed LoRA `r=8` vs Adaptive LoRA budget `192`.
+
+Run the fair-comparison experiments with:
+
+```bash
+python run_experiment.py --config configs/fair_budget_96.yaml
+python run_experiment.py --config configs/fair_budget_144.yaml
+python run_experiment.py --config configs/fair_budget_192.yaml
+```
+
 <!-- ESPAÑOL:
 Si luego haces experimentos con varias seeds, agrega algo así:
 
