@@ -21,11 +21,13 @@ The current implementation focuses on binary sentiment classification using tran
 - [Method Overview](#method-overview)
 - [Adaptive Rank Allocation Algorithm](#adaptive-rank-allocation-algorithm)
 - [Pipeline Overview](#pipeline-overview)
-- [Experimental Results](#experimental-results)
+- [Current Experiment Results](#current-experiment-results)
+- [Generated Thesis Plots](#generated-thesis-plots)
 - [Generated Outputs](#generated-outputs)
 - [Project Structure](#project-structure)
 - [Installation](#installation)
 - [Running an Experiment](#running-an-experiment)
+- [How to reproduce the experiments](#how-to-reproduce-the-experiments)
 - [Configuration](#configuration)
 - [Reproducibility](#reproducibility)
 - [Current Limitations](#current-limitations)
@@ -216,137 +218,73 @@ La imagen debería mostrar algo como:
 Dataset → Tokenization → Baseline LoRA → Gradient Scoring → Rank Allocation → Adaptive LoRA → Evaluation.
 -->
 
----
+## Current Experiment Results
 
-## Experimental Results
+The current fair-budget experiments compare fixed-rank LoRA against Adaptive
+Gradient-Aware LoRA on IMDb sentiment classification using `bert-base-uncased`.
+The values below are read from the generated CSV files under `outputs/`.
 
-<!-- ESPAÑOL:
-Esta es una de las secciones más importantes.
-Aquí debes colocar los resultados reales de tus experimentos.
+| Method | Rank budget | Trainable parameters | Accuracy | Loss | Parameter reduction |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Fixed LoRA `r=4` | 96 | 147,456 | 0.705 | 0.6609 | - |
+| Adaptive LoRA | 96 | 147,456 | 0.693 | 0.6652 | 0.0% vs `r=4` |
+| Fixed LoRA `r=6` | 144 | 221,184 | 0.699 | 0.6597 | - |
+| Adaptive LoRA | 144 | 221,184 | 0.703 | 0.6602 | 0.0% vs `r=6` |
+| Fixed LoRA `r=8` | 192 | 294,912 | 0.717 | 0.6601 | - |
+| Adaptive LoRA | 192 | 294,912 | 0.717 | 0.6601 | 0.0% vs `r=8` |
 
-Recomendación:
-Crear una carpeta llamada assets/ y guardar ahí las imágenes importantes para que GitHub las muestre correctamente.
+In the fair-budget setting, each adaptive configuration is compared with a
+fixed-rank baseline that has the same total rank budget. Therefore, the
+trainable parameter count is equal within each pair. Adaptive LoRA with budget
+`192` reproduces the fixed LoRA `r=8` result because all 24 LoRA modules receive
+rank `8`. With budget `144`, Adaptive LoRA keeps accuracy close to the fixed
+LoRA baseline and is slightly higher in this run, while using fewer parameters
+than the full `r=8` setting. With budget `96`, Adaptive LoRA uses the smaller
+parameter budget and preserves competitive accuracy, although it does not
+outperform the matched fixed LoRA `r=4` baseline in this run.
 
-Ejemplo de estructura:
+The adaptive rank distributions are:
 
-assets/
-├── pipeline_overview.png
-├── layer_scores_budget_96.png
-├── rank_pattern_budget_96.png
-├── budget_history_budget_96.png
-├── accuracy_comparison.png
-├── loss_comparison.png
-└── trainable_params_comparison.png
+| Budget | Rank 2 modules | Rank 4 modules | Rank 6 modules | Rank 8 modules |
+| ---: | ---: | ---: | ---: | ---: |
+| 96 | 16 | 0 | 0 | 8 |
+| 144 | 8 | 0 | 0 | 16 |
+| 192 | 0 | 0 | 0 | 24 |
 
-No uses directamente outputs/run_001/... si esa carpeta está en .gitignore.
-Mejor copia los gráficos finales o representativos a assets/.
--->
+## Generated Thesis Plots
 
-### Summary of Main Results
+The final thesis plots are saved in `outputs/final_plots/`.
 
-<!-- ESPAÑOL:
-Aquí coloca una tabla con tus resultados reales.
-Puedes usar los mejores resultados o los experimentos más representativos.
+| Figure | Description |
+| --- | --- |
+| `accuracy_vs_budget.png` | Compares fixed LoRA and Adaptive LoRA accuracy under rank budgets 96, 144, and 192. |
+| `accuracy_vs_trainable_params.png` | Shows accuracy as a function of trainable parameter count. |
+| `rank_distribution_by_budget.png` | Summarizes how many LoRA modules receive rank 2, 4, 6, or 8 for each budget. |
+| `rank_heatmap_budget_96.png` | Shows the layer-wise adaptive rank pattern for budget 96. |
+| `rank_heatmap_budget_144.png` | Shows the layer-wise adaptive rank pattern for budget 144. |
+| `rank_heatmap_budget_192.png` | Shows that budget 192 assigns rank 8 to every LoRA module, equivalent to fixed LoRA `r=8`. |
+| `gradient_score_heatmap_budget_96.png` | Visualizes gradient-based layer importance scores used for adaptive allocation. |
 
-Ejemplo:
-| Method | Accuracy | Eval Loss | Trainable Parameters | Training Time |
-| --- | ---: | ---: | ---: | ---: |
-| Baseline LoRA | 0.717 | 0.6601 | 294,912 | 164 s |
-| DULoRA | 0.693 | 0.6652 | 294,912 | 172 s |
+![Accuracy vs budget](outputs/final_plots/accuracy_vs_budget.png)
 
-Si todavía no quieres poner números definitivos, puedes dejar la tabla como "To be updated".
--->
+![Accuracy vs trainable parameters](outputs/final_plots/accuracy_vs_trainable_params.png)
 
-| Method | Accuracy | Eval Loss | Trainable Parameters | Training Time |
-| --- | ---: | ---: | ---: | ---: |
-| Baseline LoRA | <!-- ESPAÑOL: coloca accuracy real --> | <!-- ESPAÑOL: coloca loss real --> | <!-- ESPAÑOL: coloca parámetros entrenables --> | <!-- ESPAÑOL: coloca tiempo --> |
-| DULoRA | <!-- ESPAÑOL: coloca accuracy real --> | <!-- ESPAÑOL: coloca loss real --> | <!-- ESPAÑOL: coloca parámetros entrenables --> | <!-- ESPAÑOL: coloca tiempo --> |
+![Rank distribution by budget](outputs/final_plots/rank_distribution_by_budget.png)
 
-<!-- ESPAÑOL:
-Aquí puedes escribir una interpretación breve y honesta.
-Por ejemplo:
+![Rank heatmap budget 96](outputs/final_plots/rank_heatmap_budget_96.png)
 
-The current results show that the proposed method is functional and produces interpretable rank allocation patterns. However, in the current configuration, DULoRA does not consistently outperform the fixed-rank LoRA baseline. Further experiments with larger datasets, multiple seeds, and alternative utility functions are planned.
-
-Si tus resultados mejoran, puedes cambiar esta interpretación.
--->
-
----
-
-### Layer Utility Scores
-
-This figure shows the normalized gradient-based utility score estimated for each LoRA target layer. Higher values indicate layers that received stronger gradient signals during the warmup stage.
-
-<!-- ESPAÑOL:
-Coloca aquí el gráfico de layer scores.
-
-Ejemplo:
-![Layer utility scores](assets/layer_scores_budget_96.png)
--->
-
-![Layer utility scores](assets/layer_scores_budget_96.png)
-
----
-
-### Adaptive Rank Distribution
-
-This figure shows the final adaptive rank assigned to each LoRA layer after applying the rank allocation algorithm.
-
-<!-- ESPAÑOL:
-Coloca aquí el gráfico de rank pattern.
-
-Ejemplo:
-![Adaptive rank pattern](assets/rank_pattern_budget_96.png)
--->
-
-![Adaptive rank pattern](assets/rank_pattern_budget_96.png)
-
----
-
-### Rank Budget Allocation History
-
-This figure shows how the rank budget is distributed across layers during the allocation process.
-
-<!-- ESPAÑOL:
-Coloca aquí el gráfico de allocation history o budget history.
-
-Ejemplo:
-![Budget allocation history](assets/budget_history_budget_96.png)
--->
-
-![Budget allocation history](assets/budget_history_budget_96.png)
-
----
-
-### Baseline LoRA vs DULoRA
-
-<!-- ESPAÑOL:
-Aquí coloca gráficos comparativos.
-Recomendación:
-1. accuracy_comparison.png
-2. loss_comparison.png
-3. trainable_params_comparison.png
-
-Si solo tienes accuracy y loss, está bien.
--->
-
-#### Accuracy Comparison
-
-![Accuracy comparison](assets/accuracy_comparison.png)
-
-#### Loss Comparison
-
-![Loss comparison](assets/loss_comparison.png)
-
-#### Trainable Parameter Comparison
-
-![Trainable parameter comparison](assets/trainable_params_comparison.png)
+![Gradient score heatmap budget 96](outputs/final_plots/gradient_score_heatmap_budget_96.png)
 
 ---
 
 ## Generated Outputs
 
 Each experiment run saves the following artifacts inside its output directory:
+
+The `outputs/` directory is intended to store lightweight experiment artifacts
+such as CSV tables and PNG figures. The current pipeline uses
+`save_strategy="no"` in Hugging Face `Trainer`, so these folders are not meant
+to contain full model checkpoints.
 
 ```text
 outputs/<experiment_name>/
@@ -385,22 +323,19 @@ outputs/<experiment_name>/
 ```text
 DULoRA-Dynamic-Utility-based-LoRA-Rank-Allocation/
 │
-├── assets/
-│   ├── pipeline_overview.png
-│   ├── layer_scores_budget_96.png
-│   ├── rank_pattern_budget_96.png
-│   ├── budget_history_budget_96.png
-│   ├── accuracy_comparison.png
-│   ├── loss_comparison.png
-│   └── trainable_params_comparison.png
-│
 ├── configs/
-│   ├── default.yaml
-│   ├── colab_budget_144.yaml
-│   └── colab_budget_192.yaml
+│   ├── imdb_sentiment_final.yaml
+│   ├── ag_news_topic_final.yaml
+│   ├── beans_image_final.yaml
+│   ├── fair_budget_96.yaml
+│   ├── fair_budget_144.yaml
+│   └── fair_budget_192.yaml
 │
 ├── outputs/
-│   └── .gitkeep
+│   ├── fair_budget_96/
+│   ├── fair_budget_144/
+│   ├── fair_budget_192/
+│   └── final_plots/
 │
 ├── src/
 │   ├── __init__.py
@@ -413,19 +348,12 @@ DULoRA-Dynamic-Utility-based-LoRA-Rank-Allocation/
 │   └── evaluate.py
 │
 ├── run_experiment.py
+├── generate_final_plots.py
+├── regenerate_experiment_plots.py
 ├── requirements.txt
 ├── README.md
 └── .gitignore
 ```
-
-<!-- ESPAÑOL:
-Si todavía no tienes la carpeta assets/, créala.
-Ahí debes colocar las imágenes finales que quieres mostrar en GitHub.
-
-Comando:
-
-mkdir assets
--->
 
 ---
 
@@ -433,17 +361,20 @@ mkdir assets
 
 | File | Purpose |
 | --- | --- |
-| `configs/default.yaml` | Default experiment configuration. |
-| `configs/colab_budget_144.yaml` | Colab-oriented configuration with adaptive rank budget 144. |
-| `configs/colab_budget_192.yaml` | Colab-oriented configuration with adaptive rank budget 192. |
-| `src/data.py` | Loads and tokenizes the Hugging Face dataset. |
-| `src/model.py` | Builds the base transformer model and applies LoRA through PEFT. |
+| `configs/imdb_sentiment_final.yaml` | Final IMDb sentiment classification configuration. |
+| `configs/ag_news_topic_final.yaml` | Final AG News topic classification configuration. |
+| `configs/beans_image_final.yaml` | Final Beans image classification configuration. |
+| `configs/fair_budget_*.yaml` | Fair-budget IMDb comparison configs for budgets 96, 144, and 192. |
+| `src/data.py` | Loads and preprocesses text or image datasets. |
+| `src/model.py` | Builds text or image classification models and applies LoRA through PEFT. |
 | `src/rank_allocator.py` | Collects gradient-based layer scores and allocates adaptive ranks. |
 | `src/experiment.py` | Orchestrates baseline training, scoring, adaptive training, and output saving. |
 | `src/evaluate.py` | Defines evaluation metrics for Hugging Face `Trainer`. |
 | `src/plots.py` | Saves CSV files and plots for analysis. |
 | `src/utils.py` | Handles config loading, seed control, device selection, and parameter counting. |
 | `run_experiment.py` | Command-line entrypoint for running experiments. |
+| `generate_final_plots.py` | Generates consolidated thesis figures from fair-budget outputs. |
+| `regenerate_experiment_plots.py` | Regenerates per-experiment plots from existing CSV files. |
 
 ---
 
@@ -490,39 +421,35 @@ The experiments were mainly executed in Google Colab using GPU acceleration.
 
 ## Running an Experiment
 
-Run the default experiment:
+Run the IMDb sentiment final configuration:
 
 ```bash
-python run_experiment.py --config configs/default.yaml
+python run_experiment.py --config configs/imdb_sentiment_final.yaml
 ```
 
-Run a specific budget configuration:
+Run the AG News topic classification configuration:
 
 ```bash
-python run_experiment.py --config configs/colab_budget_144.yaml
+python run_experiment.py --config configs/ag_news_topic_final.yaml
 ```
 
+Run the Beans image classification configuration:
+
 ```bash
-python run_experiment.py --config configs/colab_budget_192.yaml
+python run_experiment.py --config configs/beans_image_final.yaml
 ```
 
 ---
 
-## Reproducing Thesis Experiments
+## How to reproduce the experiments
 
-<!-- ESPAÑOL:
-Aquí puedes poner los comandos exactos que usaste para los experimentos de tu tesis.
-
-Si tienes varios presupuestos, puedes colocar algo así.
-Modifica los nombres según tus archivos reales.
--->
-
-To reproduce the main thesis experiments, run:
+To reproduce the fair-budget experiments used for the thesis comparison, run:
 
 ```bash
-python run_experiment.py --config configs/default.yaml
-python run_experiment.py --config configs/colab_budget_144.yaml
-python run_experiment.py --config configs/colab_budget_192.yaml
+python run_experiment.py --config configs/fair_budget_96.yaml
+python run_experiment.py --config configs/fair_budget_144.yaml
+python run_experiment.py --config configs/fair_budget_192.yaml
+python generate_final_plots.py
 ```
 
 The generated metrics and plots will be saved under:
@@ -540,7 +467,7 @@ approximately equivalent rank budgets:
 - Fixed LoRA `r=6` vs Adaptive LoRA budget `144`.
 - Fixed LoRA `r=8` vs Adaptive LoRA budget `192`.
 
-Run the fair-comparison experiments with:
+Run only the fair-comparison training jobs with:
 
 ```bash
 python run_experiment.py --config configs/fair_budget_96.yaml
@@ -565,27 +492,18 @@ under:
 outputs/final_plots/
 ```
 
-<!-- ESPAÑOL:
-Si luego haces experimentos con varias seeds, agrega algo así:
-
-python run_experiment.py --config configs/seed_42_budget_96.yaml
-python run_experiment.py --config configs/seed_96_budget_96.yaml
-python run_experiment.py --config configs/seed_123_budget_96.yaml
--->
-
----
-
 ## Configuration
 
-The default configuration follows this structure:
+The fair-budget IMDb configurations follow this structure:
 
 ```yaml
 seed: 42
-experiment_name: run_001
+experiment_name: fair_budget_96
 output_dir: outputs
 
 dataset:
   name: imdb
+  text_column: text
   train_size: 2000
   test_size: 1000
   max_length: 256
@@ -608,7 +526,7 @@ lora:
     - value
 
 baseline_lora:
-  r: 8
+  r: 4
 
 adaptive_lora:
   algorithm: gradient_aware
